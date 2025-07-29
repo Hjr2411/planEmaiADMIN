@@ -1,0 +1,180 @@
+<!DOCTYPE html><html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlanEmailH v2</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --primary: #0078D4;
+      --primary-hover: #005a9e;
+      --background: #f3f3f3;
+      --card: #ffffff;
+      --text: #1b1b1b;
+      --gray: #e1e1e1;
+      --success: #107C10;
+      --danger: #D13438;
+      --border-radius: 8px;
+    }
+    body {
+      background-color: var(--background);
+      font-family: "Segoe UI", sans-serif;
+      margin: 0; padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 2rem;
+    }
+    .glass-card {
+      background-color: var(--card);
+      border-radius: var(--border-radius);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+      padding: 2rem;
+    }
+    .btn-windows {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .btn-windows:hover {
+      background-color: var(--primary-hover);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      inset: 0;
+      background-color: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: white;
+      padding: 2rem;
+      border-radius: var(--border-radius);
+      width: 100%;
+      max-width: 500px;
+    }
+    .input-field {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.3rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--gray);
+      border-radius: var(--border-radius);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="glass-card">
+      <h1>PlanEmailH v2</h1>
+      <p>Gestão de e-mails - N3</p>
+      <button id="adminButton" class="btn-windows hidden">Admin</button>
+      <button id="logoutButton" class="btn-windows hidden">Sair</button>
+    </div>
+  </div>  <!-- Modal Login -->  <div id="loginModal" class="modal" style="display:flex;">
+    <div class="modal-content">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Usuário</label>
+        <input id="loginUser" class="input-field" required />
+        <label>Senha</label>
+        <input type="password" id="loginPassword" class="input-field" required />
+        <button type="submit" class="btn-windows">Entrar</button>
+      </form>
+    </div>
+  </div>  <!-- Modal Admin -->  <div id="userModal" class="modal">
+    <div class="modal-content">
+      <h2>Criar Novo Usuário</h2>
+      <form id="userForm">
+        <label>Usuário</label>
+        <input id="newUser" class="input-field" required />
+        <label>Senha</label>
+        <input id="newPass" class="input-field" required />
+        <label><input type="checkbox" id="newIsAdmin" /> Administrador</label>
+        <button type="submit" class="btn-windows">Salvar</button>
+      </form>
+    </div>
+  </div>  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCAnTFGReRhjXKeSeGrcH3enK6lL_Uf_Y",
+      authDomain: "planh-55e03.firebaseapp.com",
+      databaseURL: "https://planh-55e03-default-rtdb.firebaseio.com",
+      projectId: "planh-55e03",
+      storageBucket: "planh-55e03.appspot.com",
+      messagingSenderId: "288085753915",
+      appId: "1:288085753915:web:f413cff93946f357f71c1e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let currentUser = null;
+    let isAdmin = false;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const loginForm = document.getElementById("loginForm");
+      const userModal = document.getElementById("userModal");
+      const userForm = document.getElementById("userForm");
+
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("loginUser").value.trim();
+        const password = document.getElementById("loginPassword").value.trim();
+
+        const userRef = ref(db, `users/${username}`);
+        const snapshot = await get(userRef);
+
+        if (!snapshot.exists()) return alert("Usuário não encontrado");
+        const data = snapshot.val();
+        if (data.password !== password) return alert("Senha incorreta");
+
+        currentUser = username;
+        isAdmin = data.admin === true;
+
+        localStorage.setItem("user", username);
+        localStorage.setItem("isAdmin", isAdmin);
+
+        document.getElementById("loginModal").style.display = "none";
+        document.getElementById("logoutButton").classList.remove("hidden");
+        if (isAdmin) document.getElementById("adminButton").classList.remove("hidden");
+      });
+
+      document.getElementById("adminButton").onclick = () => {
+        userModal.style.display = "flex";
+      };
+
+      userForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newUser = document.getElementById("newUser").value.trim();
+        const newPass = document.getElementById("newPass").value.trim();
+        const isAdm = document.getElementById("newIsAdmin").checked;
+
+        const userRef = ref(db, `users/${newUser}`);
+        await set(userRef, {
+          password: newPass,
+          admin: isAdm,
+          name: newUser
+        });
+
+        alert("Usuário criado com sucesso.");
+        userForm.reset();
+        userModal.style.display = "none";
+      });
+
+      document.getElementById("logoutButton").onclick = () => {
+        localStorage.clear();
+        location.reload();
+      };
+    });
+  </script></body>
+</html>
